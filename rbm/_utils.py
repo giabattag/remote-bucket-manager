@@ -32,9 +32,26 @@ def parse_mapping_file(mapping_file):
 
 def run_command(cmd):
     print(">>", " ".join(cmd))
-    result = subprocess.run(cmd)
+
+    result = subprocess.run(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True
+    )
 
     if result.returncode != 0:
-        raise RuntimeError(f"Command failed: {' '.join(cmd)}")
+        error_msg = (
+            f"\nCommand failed!\n"
+            f"Exit code: {result.returncode}\n"
+            f"Command: {' '.join(cmd)}\n"
+            f"\n--- STDOUT ---\n{result.stdout}\n"
+            f"--- STDERR ---\n{result.stderr}\n"
+        )
+        raise RuntimeError(error_msg)
 
+    if result.stdout:
+        print(result.stdout)
+
+    return result
 
