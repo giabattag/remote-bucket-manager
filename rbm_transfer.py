@@ -5,7 +5,7 @@ from rbm import ssh_transfer
 
 def print_usage():
     print("Usage:")
-    print("  python ssh_transfer.py <mapping_file> <remote_host> <upload|download> [scp|rsync]")
+    print("  python rbm_transfer.py <mapping_file> <remote_host> <upload|download> [scp|rsync]")
     raise RuntimeError
 
 if __name__ != "__main__": print_usage()
