@@ -46,7 +46,7 @@ def ensure_local_dir(local_path):
     local_dir = os.path.dirname(local_path)
 
     cmd = [
-        f"mkdir -p {local_dir}"
+        "mkdir", "-p", local_dir
     ]
 
     run_command(cmd)
