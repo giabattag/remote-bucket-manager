@@ -4,7 +4,7 @@ import sys
 
 from ._utils import parse_mapping_file, run_command
 
-"""
+r"""
 Mapping file example:
 # local_path,remote_path
 ./data/file1.txt,/remote/path/file1.txt

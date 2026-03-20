@@ -3,7 +3,7 @@
 import os
 import subprocess
 
-"""
+r"""
 Mapping file example:
 # local_path,remote_path
 ./data/file1.txt,/remote/path/file1.txt
