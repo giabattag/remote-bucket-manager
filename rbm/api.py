@@ -2,7 +2,7 @@
 
 import sys
 
-from ._utils import eensure_local_dir, ensure_ssh_agent, parse_mapping_file, run_command, ensure_remote_dir
+from ._utils import ensure_local_dir, ensure_ssh_agent, parse_mapping_file, run_command, ensure_remote_dir
 
 r"""
 Mapping file example:
