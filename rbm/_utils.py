@@ -41,6 +41,17 @@ def ensure_remote_dir(remote_host, remote_path):
 
     run_command(cmd)
 
+def ensure_local_dir(local_path):
+    # Extract directory part
+    local_dir = os.path.dirname(local_path)
+
+    cmd = [
+        f"mkdir -p {local_dir}"
+    ]
+
+    run_command(cmd)
+
+
 def run_command(cmd):
     print(">>", " ".join(cmd))
 
