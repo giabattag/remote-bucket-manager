@@ -1,5 +1,6 @@
 # Main helper for RBM transfer
 
+import sys
 from rbm import ssh_transfer
 
 def print_usage():
