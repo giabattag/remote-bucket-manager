@@ -79,47 +79,87 @@ def run_command(cmd):
 
 def ensure_ssh_agent():
     """
-    Ensure ssh-agent is running and a key is loaded.
-    Works on Linux/macOS/Windows (PowerShell + Git Bash).
+    Ensure ssh-agent is running and key is loaded.
+    Cross-platform (Windows + Unix).
     """
 
-    # If agent already available → nothing to do
-    if os.environ.get("SSH_AUTH_SOCK"):
-        return
+    key_path = os.path.expanduser("~/.ssh/id_rsa")
 
-    print("[INFO] No ssh-agent detected, starting one...")
-
+    # =========================
+    # WINDOWS
+    # =========================
     if os.name == "nt":
-        # Windows (PowerShell OpenSSH)
-        try:
-            subprocess.run(
-                ["powershell", "-Command",
-                 "Start-Service ssh-agent"],
-                check=False
-            )
-        except Exception:
-            pass
+        print("[INFO] Checking ssh-agent (Windows)...")
 
-        # Try to add key (will prompt once)
-        key_path = os.path.expanduser("~/.ssh/id_rsa")
-        subprocess.run(["ssh-add", key_path])
-
-    else:
-        # Linux / macOS / Git Bash
-        proc = subprocess.run(
-            ["ssh-agent", "-s"],
+        # Check if ssh-agent process is running
+        result = subprocess.run(
+            ["tasklist", "/FI", "IMAGENAME eq ssh-agent.exe"],
             stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             text=True
         )
 
-        # Extract env variables
-        for line in proc.stdout.splitlines():
-            if "SSH_AUTH_SOCK" in line or "SSH_AGENT_PID" in line:
-                key, _, value = line.partition("=")
-                value = value.split(";")[0]
-                os.environ[key] = value
+        if "ssh-agent.exe" not in result.stdout:
+            print("[INFO] ssh-agent not running, starting it...")
 
-        # Add key (will prompt once)
-        key_path = os.path.expanduser("~/.ssh/id_rsa")
-        subprocess.run(["ssh-add", key_path])
+            # Start the service (more reliable than Start-Process)
+            subprocess.run(
+                ["powershell", "-Command", "Start-Service ssh-agent"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL
+            )
+        else:
+            print("[INFO] ssh-agent already running.")
+
+        # Check if key already added
+        result = subprocess.run(
+            ["ssh-add", "-L"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+
+        if key_path not in result.stdout:
+            print("[INFO] Adding SSH key...")
+            subprocess.run(["ssh-add", key_path])
+        else:
+            print("[INFO] SSH key already added.")
+
+    # =========================
+    # LINUX / MAC / GIT BASH
+    # =========================
+    else:
+        print("[INFO] Checking ssh-agent (Unix)...")
+
+        # If agent already exists → reuse
+        if os.environ.get("SSH_AUTH_SOCK"):
+            print("[INFO] ssh-agent already available.")
+        else:
+            print("[INFO] Starting ssh-agent...")
+
+            proc = subprocess.run(
+                ["ssh-agent", "-s"],
+                stdout=subprocess.PIPE,
+                text=True
+            )
+
+            # Parse env variables
+            for line in proc.stdout.splitlines():
+                if "=" in line:
+                    key, val = line.split(";", 1)[0].split("=", 1)
+                    os.environ[key] = val
+
+        # Check if key loaded
+        result = subprocess.run(
+            ["ssh-add", "-L"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+
+        if "The agent has no identities" in result.stdout or result.returncode != 0:
+            print("[INFO] Adding SSH key...")
+            subprocess.run(["ssh-add", key_path])
+        else:
+            print("[INFO] SSH key already loaded.")
 
