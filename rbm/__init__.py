@@ -2,5 +2,5 @@
 
 # manages uploads and downloads of items for remote storage
 
-from api import ssh_transfer
+from .api import ssh_transfer
 
