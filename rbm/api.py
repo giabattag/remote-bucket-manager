@@ -2,7 +2,7 @@
 
 import sys
 
-from ._utils import parse_mapping_file, run_command
+from ._utils import ensure_ssh_agent, parse_mapping_file, run_command, ensure_remote_dir
 
 r"""
 Mapping file example:
@@ -18,12 +18,15 @@ def ssh_transfer(mapping_file, remote_host, direction="upload", method="scp"):
     method: 'scp' or 'rsync'
     """
 
+    ensure_ssh_agent()
+
     mappings = parse_mapping_file(mapping_file)
 
     for local, remote in mappings:
 
         if method == "scp":
             if direction == "upload":
+                ensure_remote_dir(remote_host, remote)
                 src = local
                 dst = f"{remote_host}:{remote}"
             else:
