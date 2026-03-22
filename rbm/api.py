@@ -4,7 +4,7 @@ import os
 import sys
 import subprocess
 
-from ._utils import ensure_local_dir, ensure_ssh_agent, parse_mapping_file, run_command, list_remote_files, ensure_remote_dir
+from ._utils import expand_remote_path, ensure_local_dir, ensure_ssh_agent, parse_mapping_file, run_command, list_remote_files, ensure_remote_dir, is_remote_dir
 
 r"""
 Mapping file example:
@@ -25,6 +25,9 @@ def ssh_transfer(mapping_file, remote_host, direction="upload", method="scp"):
     mappings = parse_mapping_file(mapping_file)
 
     for local, remote in mappings:
+        if "~" in remote:
+            remote = expand_remote_path(remote_host, remote)
+
         if "*" in local or "*" in remote:
             raise ValueError("Wildcard '*' not supported")
 
@@ -65,15 +68,7 @@ def ssh_transfer(mapping_file, remote_host, direction="upload", method="scp"):
             # -------- DOWNLOAD --------
             else:
                 # Check if remote is directory
-                check_cmd = [
-                    "ssh",
-                    remote_host,
-                    f'if [ -d "{remote}" ]; then echo DIR; else echo FILE; fi'
-                ]
-
-                result = subprocess.run(check_cmd, stdout=subprocess.PIPE, text=True)
-                is_dir = "DIR" in result.stdout
-
+                is_dir = is_remote_dir(remote_host, remote)
                 if is_dir:
                     files = list_remote_files(remote_host, remote)
 

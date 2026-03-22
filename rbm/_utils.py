@@ -30,13 +30,34 @@ def parse_mapping_file(mapping_file):
     return mappings
 
 def list_remote_files(remote_host, remote_dir):
-    cmd = ["ssh", remote_host, f'find "{remote_dir}" -type f']
+    cmd = ["ssh", remote_host, f'find {remote_dir} -type f']
     result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
     if result.returncode != 0:
         raise RuntimeError(result.stderr)
 
     return result.stdout.strip().splitlines()
+
+def expand_remote_path(remote_host, path):
+    cmd = ["ssh", remote_host, f'echo {path}']
+    result = subprocess.run(cmd, stdout=subprocess.PIPE, text=True)
+    return result.stdout.strip()
+
+def is_remote_dir(remote_host, remote_path):
+    cmd = [
+        "ssh",
+        remote_host,
+        f'test -d {remote_path} && echo DIR || echo FILE'
+    ]
+
+    result = subprocess.run(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True
+    )
+
+    return "DIR" in result.stdout
 
 def ensure_remote_dir(remote_host, remote_path):
     # Extract directory part
