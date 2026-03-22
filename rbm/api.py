@@ -2,6 +2,7 @@
 
 import os
 import sys
+import subprocess
 
 from ._utils import ensure_local_dir, ensure_ssh_agent, parse_mapping_file, run_command, list_remote_files, ensure_remote_dir
 
