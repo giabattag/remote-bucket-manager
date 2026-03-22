@@ -119,10 +119,8 @@ def ssh_transfer(mapping_file, remote_host, direction="upload", method="scp"):
             ]
 
             run_command(cmd)
-       else:
+        else:
             raise ValueError("method must be 'scp' or 'rsync'")
-
-        run_command(cmd)
 
 
 if __name__ == "__main__":
