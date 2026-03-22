@@ -23,6 +23,8 @@ def ssh_transfer(mapping_file, remote_host, direction="upload", method="scp"):
     mappings = parse_mapping_file(mapping_file)
 
     for local, remote in mappings:
+        if "*" in local or "*" in remote:
+            raise ValueError("Wildcard '*' not supported")
 
         if method == "scp":
             if direction == "upload":
