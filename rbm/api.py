@@ -1,8 +1,9 @@
 # API for Remote Bucket Manager
 
+import os
 import sys
 
-from ._utils import ensure_local_dir, ensure_ssh_agent, parse_mapping_file, run_command, ensure_remote_dir
+from ._utils import ensure_local_dir, ensure_ssh_agent, parse_mapping_file, run_command, list_remote_files, ensure_remote_dir
 
 r"""
 Mapping file example:
@@ -26,18 +27,81 @@ def ssh_transfer(mapping_file, remote_host, direction="upload", method="scp"):
         if "*" in local or "*" in remote:
             raise ValueError("Wildcard '*' not supported")
 
+        # =========================
+        # SCP MODE (FILE-BY-FILE)
+        # =========================
         if method == "scp":
+
+            # -------- UPLOAD --------
             if direction == "upload":
-                ensure_remote_dir(remote_host, remote)
-                src = local
-                dst = f"{remote_host}:{remote}"
+                if os.path.isdir(local):
+                    for root, _, files in os.walk(local):
+                        for f in files:
+                            local_file = os.path.join(root, f)
+
+                            rel = os.path.relpath(local_file, local)
+                            remote_file = os.path.join(remote, rel).replace("\\", "/")
+
+                            ensure_remote_dir(remote_host, remote_file)
+
+                            cmd = [
+                                "scp",
+                                local_file,
+                                f"{remote_host}:{remote_file}"
+                            ]
+                            run_command(cmd)
+
+                else:
+                    ensure_remote_dir(remote_host, remote)
+
+                    cmd = [
+                        "scp",
+                        local,
+                        f"{remote_host}:{remote}"
+                    ]
+                    run_command(cmd)
+
+            # -------- DOWNLOAD --------
             else:
-                ensure_local_dir(local)
-                src = f"{remote_host}:{remote}"
-                dst = local
+                # Check if remote is directory
+                check_cmd = [
+                    "ssh",
+                    remote_host,
+                    f'if [ -d "{remote}" ]; then echo DIR; else echo FILE; fi'
+                ]
 
-            cmd = ["scp", "-r", src, dst]
+                result = subprocess.run(check_cmd, stdout=subprocess.PIPE, text=True)
+                is_dir = "DIR" in result.stdout
 
+                if is_dir:
+                    files = list_remote_files(remote_host, remote)
+
+                    for remote_file in files:
+                        rel = os.path.relpath(remote_file, remote)
+                        local_file = os.path.join(local, rel)
+
+                        ensure_local_dir(local_file)
+
+                        cmd = [
+                            "scp",
+                            f"{remote_host}:{remote_file}",
+                            local_file
+                        ]
+                        run_command(cmd)
+
+                else:
+                    ensure_local_dir(local)
+
+                    cmd = [
+                        "scp",
+                        f"{remote_host}:{remote}",
+                        local
+                    ]
+                    run_command(cmd)
+
+        # =========================
+        # RSYNC MODE (UNCHANGED)
+        # =========================
         elif method == "rsync":
             if direction == "upload":
                 src = local
@@ -54,7 +118,8 @@ def ssh_transfer(mapping_file, remote_host, direction="upload", method="scp"):
                 dst
             ]
 
-        else:
+            run_command(cmd)
+       else:
             raise ValueError("method must be 'scp' or 'rsync'")
 
         run_command(cmd)
