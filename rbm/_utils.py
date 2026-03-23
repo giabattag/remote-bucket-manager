@@ -2,6 +2,8 @@
 
 import os
 import subprocess
+import time
+import re
 
 r"""
 Mapping file example:
@@ -81,18 +83,54 @@ def ensure_local_dir(local_path):
 
     run_command(cmd)
 
+_RETRY_PATTERNS = [
+    r"kex_exchange_identification",
+    r"Connection reset by",
+    r"Connection closed by",
+    r"scp: Connection closed",
+    r"rsync: connection unexpectedly closed",
+    r"Connection reset by peer",
+]
 
-def run_command(cmd):
+
+def _is_retryable_error(stderr: str) -> bool:
+    for pattern in _RETRY_PATTERNS:
+        if re.search(pattern, stderr, re.IGNORECASE):
+            return True
+    return False
+
+def run_command(cmd, max_retries=10, base_delay=2):
     print(">>", " ".join(cmd))
 
-    result = subprocess.run(
-        cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True
-    )
+    attempt = 0
 
-    if result.returncode != 0:
+    while True:
+        result = subprocess.run(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+
+        if result.returncode == 0:
+            if result.stdout:
+                print(result.stdout)
+            return result
+
+        # Check if retryable
+        if _is_retryable_error(result.stderr) and attempt < max_retries:
+            delay = base_delay * (2 ** attempt)  # exponential backoff
+
+            print(
+                f"Retryable SSH error detected (attempt {attempt+1}/{max_retries})\n"
+                f"Waiting {delay}s before retry...\n"
+            )
+
+            time.sleep(delay)
+            attempt += 1
+            continue
+
+        # Otherwise: real failure → raise
         error_msg = (
             f"\nCommand failed!\n"
             f"Exit code: {result.returncode}\n"
@@ -102,10 +140,30 @@ def run_command(cmd):
         )
         raise RuntimeError(error_msg)
 
-    if result.stdout:
-        print(result.stdout)
-
-    return result
+# def run_command(cmd):
+#     print(">>", " ".join(cmd))
+#
+#     result = subprocess.run(
+#         cmd,
+#         stdout=subprocess.PIPE,
+#         stderr=subprocess.PIPE,
+#         text=True
+#     )
+#
+#     if result.returncode != 0:
+#         error_msg = (
+#             f"\nCommand failed!\n"
+#             f"Exit code: {result.returncode}\n"
+#             f"Command: {' '.join(cmd)}\n"
+#             f"\n--- STDOUT ---\n{result.stdout}\n"
+#             f"--- STDERR ---\n{result.stderr}\n"
+#         )
+#         raise RuntimeError(error_msg)
+#
+#     if result.stdout:
+#         print(result.stdout)
+#
+#     return result
 
 def ensure_ssh_agent():
     """
